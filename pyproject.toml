@@ -1,5 +1,5 @@
 [project]
-name = "pyloudnorm"
+name = "jaxloudnorm"
 version = "0.1.1"
 description = "Implementation of ITU-R BS.1770-4 loudness algorithm in Python."
 authors = [
