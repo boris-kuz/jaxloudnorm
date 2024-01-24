@@ -1,3 +1,5 @@
+# note: to be removed from here once I move it to its own package
+
 import jax
 import jax.numpy as jnp
 from jax import lax
@@ -14,33 +16,6 @@ def _axes_to_mapped_axes(axes: Sequence[int] | int, ndim: int) -> Set[int]:
     axes = _ensure_index_tuple(axes)
     axes = tuple(canonicalize_axis(ax, ndim) for ax in axes)
     return set(range(ndim)) - set(axes)
-
-
-def sosfilt(
-    sos: ArrayLike, x: ArrayLike, axis: int = -1, zi: Array | None = None
-) -> Array | tuple[Array, Array]:
-    sos = jnp.atleast_2d(sos)
-    x = jnp.atleast_1d(x)
-
-    def f(out: Array, sos_zi: tuple[Array, Array]) -> tuple[Array, Array]:
-        sos, zi = sos_zi
-        b, a = jnp.split(sos, 2)
-        out, zi = lfilter(b, a, out, axis, zi)
-        return out, zi
-
-    scan_f = lambda zi_: lax.scan(f, x, (sos, zi_))
-
-    if zi is None:
-        num_sections = sos.shape[0]
-        zi_shape = (
-            num_sections,
-            *(
-                s if a != canonicalize_axis(axis, x.ndim) else 2
-                for a, s in enumerate(x.shape)
-            ),
-        )
-        return scan_f(jnp.zeros_like(x, shape=zi_shape))[0]
-    return scan_f(zi)
 
 
 def lfilter(

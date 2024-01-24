@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from textwrap import dedent
 
 
-class IIRfilter(object):
+class IIRfilter:
     """IIR Filter object to pre-filtering
 
     This class allows for the generation of various IIR filters
