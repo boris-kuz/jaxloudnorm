@@ -1,7 +1,9 @@
 from .lfilter import lfilter
 
-from textwrap import dedent
+import jax
 import jax.numpy as jnp
+
+from textwrap import dedent
 
 
 class IIRfilter(object):
@@ -180,7 +182,9 @@ class IIRfilter(object):
         filtered_signal : ndarray
             Filtered input audio.
         """
-        return self.passband_gain * lfilter(self.b, self.a, data, axis=axis)
+        return self.passband_gain * jax.jit(lfilter, static_argnames="axis")(
+            self.b, self.a, data, axis=axis
+        )
 
     @property
     def a(self):

@@ -27,7 +27,9 @@ class Meter(object):
         Gating block size in seconds.
     """
 
-    def __init__(self, rate, filter_class="K-weighting", block_size=0.400):
+    def __init__(
+        self, rate: float, filter_class: str = "K-weighting", block_size: float = 0.400
+    ):
         self.rate = rate
         self.filter_class = filter_class
         self.block_size = block_size
@@ -94,21 +96,14 @@ class Meter(object):
 
         # loudness for each jth block (see eq. 4)
         loudness_per_block = -0.691 + 10.0 * jnp.log10(
-            jnp.sum(G[:numChannels] * z[:numChannels, ...], axis=0)
+            jnp.sum(G[:numChannels, None] * z[:numChannels, ...], axis=0)
         )
 
         # find gating block indices above absolute threshold
-        # abs_gating_idxs = [
-        #     idx
-        #     for idx, loudness in enumerate(loudness_per_block)
-        #     if loudness >= Gamma_a
-        # ]
-
-        # calculate the average of z[i,j] as show in eq. 5
-        # z_avg_gated = jnp.mean(z[:, abs_gating_idxs], axis=1)
-
         z_ = jax.lax.select(
-            jnp.tile((loudness_per_block >= Gamma_a).reshape(1, -1), numChannels),
+            jnp.broadcast_to(
+                np.atleast_2d(loudness_per_block >= Gamma_a), z[:numChannels, ...].shape
+            ),
             z[:numChannels, ...],
             jnp.zeros_like(z[:numChannels, ...]),
         )
@@ -123,19 +118,16 @@ class Meter(object):
         )
 
         # find gating block indices above relative and absolute thresholds  (end of eq. 7)
-        # abs_and_rel_gating_idxs = [
-        #     j
-        #     for j, l_j in enumerate(loudness_per_block)
-        #     if (l_j > Gamma_r and l_j > Gamma_a)
-        # ]
-
-        # # calculate the average of z[i,j] as show in eq. 7 with blocks above both thresholds
-        # z_avg_gated = jnp.nan_to_num(jnp.mean(z[:, abs_and_rel_gating_idxs], axis=1))
-
         z_ = jax.lax.select(
             jnp.logical_and(
-                jnp.tile((loudness_per_block >= Gamma_a).reshape(1, -1), numChannels),
-                jnp.tile((loudness_per_block >= Gamma_r).reshape(1, -1), numChannels),
+                jnp.broadcast_to(
+                    np.atleast_2d(loudness_per_block >= Gamma_a),
+                    z[:numChannels, ...].shape,
+                ),
+                jnp.broadcast_to(
+                    np.atleast_2d(loudness_per_block >= Gamma_r),
+                    z[:numChannels, ...].shape,
+                ),
             ),
             z[:numChannels, ...],
             jnp.zeros_like(z[:numChannels, ...]),

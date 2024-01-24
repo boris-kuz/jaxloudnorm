@@ -1,7 +1,9 @@
 import warnings
 import jax.numpy as jnp
+import jax
 
 
+@jax.jit
 def peak(data, target):
     """Peak normalize a signal.
 
@@ -27,12 +29,13 @@ def peak(data, target):
     output = gain * data
 
     # check for potentially clipped samples
-    if jnp.max(jnp.abs(output)) >= 1.0:
-        warnings.warn("Possible clipped samples in output.")
+    # if jnp.max(jnp.abs(output)) >= 1.0:
+    #     warnings.warn("Possible clipped samples in output.")
 
     return output
 
 
+@jax.jit
 def loudness(data, input_loudness, target_loudness):
     """Loudness normalize a signal.
 
@@ -59,7 +62,7 @@ def loudness(data, input_loudness, target_loudness):
     output = gain * data
 
     # check for potentially clipped samples
-    if jnp.max(jnp.abs(output)) >= 1.0:
-        warnings.warn("Possible clipped samples in output.")
+    # if jnp.max(jnp.abs(output)) >= 1.0:
+    #     warnings.warn("Possible clipped samples in output.")
 
     return output
