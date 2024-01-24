@@ -12,6 +12,14 @@ def test_integrated_loudness():
     assert jnp.isclose(loudness, -3.0523438444331137)
 
 
+def test_batched_integrated_loudness():
+    data, rate = sf.read("tests/data/sine_1000.wav")
+    meter = pyln.Meter(rate)
+    loudness = jax.vmap(meter.integrated_loudness)(jnp.stack([data, data, data]))
+
+    assert jnp.allclose(loudness, jnp.full(loudness.shape, -3.0523438444331137))
+
+
 def test_peak_normalize():
     data = jnp.array(0.5)
     norm = pyln.normalize.peak(data, 0.0)

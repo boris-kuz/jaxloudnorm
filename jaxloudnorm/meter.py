@@ -13,7 +13,7 @@ from functools import partial
 
 def _gated_mean(condition, x):
     masked = jax.lax.select(
-        jnp.broadcast_to(np.atleast_2d(condition), x.shape),
+        jnp.broadcast_to(jnp.atleast_2d(condition), x.shape),
         x,
         jnp.zeros_like(x),
     )
@@ -119,6 +119,7 @@ class Meter:
         )
 
         # find gating block indices above absolute threshold
+
         z_avg_gated_abs = _gated_mean(
             loudness_per_block >= abs_loudness_thresh, z[:num_channels, ...]
         )
