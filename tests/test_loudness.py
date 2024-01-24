@@ -37,6 +37,17 @@ def test_loudness_normalize():
     assert jnp.isclose(loudness, -6.0)
 
 
+def test_batched_loudness_normalize():
+    data, rate = sf.read("tests/data/sine_1000.wav")
+    data = jnp.stack([data, data, data, data])
+    meter = pyln.Meter(rate)
+    loudness = jax.vmap(meter.integrated_loudness)(data)
+    norm = jax.vmap(pyln.normalize.loudness, in_axes=(0, 0, None))(data, loudness, -6.0)
+    loudness = jax.vmap(meter.integrated_loudness)(norm)
+
+    assert jnp.allclose(loudness, jnp.full(loudness.shape, -6.0))
+
+
 def test_rel_gate_test():
     data, rate = sf.read("tests/data/1770-2_Comp_RelGateTest.wav")
     meter = pyln.Meter(rate)

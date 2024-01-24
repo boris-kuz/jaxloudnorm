@@ -1,4 +1,9 @@
-# pyloudnorm  [![Build Status](https://travis-ci.org/csteinmetz1/pyloudnorm.svg?branch=master)](https://travis-ci.org/csteinmetz1/pyloudnorm) ![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.3551801.svg)
+`s/np/jnp/g`
+`s/py/jax/g`
+
+Docs below are from the original repo for the most part
+
+# jaxloudnorm  [![Build Status](https://travis-ci.org/csteinmetz1/pyloudnorm.svg?branch=master)](https://travis-ci.org/csteinmetz1/pyloudnorm) ![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.3551801.svg)
 Flexible audio loudness meter in Python. 
 
 Implementation of [ITU-R BS.1770-4](https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1770-4-201510-I!!PDF-E.pdf). <br/>
@@ -7,14 +12,9 @@ Allows control over gating block size and frequency weighting filters for additi
 For full details on the implementation see our [paper](https://csteinmetz1.github.io/pyloudnorm-eval/paper/pyloudnorm_preprint.pdf) with a summary in our [AES presentation video](https://www.youtube.com/watch?v=krSJpQ3d4gE).
 
 ## Installation
-You can install with pip as follows
+Install from GitHub repo using
 ```
-pip install pyloudnorm
-```
-
-For the latest releases always install from the GitHub repo
-```
-pip install git+https://github.com/csteinmetz1/pyloudnorm
+pip install git+https://github.com/boris-kuz/jaxloudnorm
 ```
 ## Usage
 
@@ -23,10 +23,10 @@ It's easy to measure the loudness of a wav file.
 Here we use PySoundFile to read a .wav file as an ndarray.
 ```python
 import soundfile as sf
-import pyloudnorm as pyln
+import jaxloudnorm as jln
 
 data, rate = sf.read("test.wav") # load audio (with shape (samples, channels))
-meter = pyln.Meter(rate) # create BS.1770 meter
+meter = jln.Meter(rate) # create BS.1770 meter
 loudness = meter.integrated_loudness(data) # measure loudness
 ```
 
@@ -34,19 +34,19 @@ loudness = meter.integrated_loudness(data) # measure loudness
 Methods are included to normalize audio files to desired peak values or desired loudness.
 ```python
 import soundfile as sf
-import pyloudnorm as pyln
+import jaxloudnorm as jln
 
 data, rate = sf.read("test.wav") # load audio
 
 # peak normalize audio to -1 dB
-peak_normalized_audio = pyln.normalize.peak(data, -1.0)
+peak_normalized_audio = jln.normalize.peak(data, -1.0)
 
 # measure the loudness first 
-meter = pyln.Meter(rate) # create BS.1770 meter
+meter = jln.Meter(rate) # create BS.1770 meter
 loudness = meter.integrated_loudness(data)
 
 # loudness normalize audio to -12 dB LUFS
-loudness_normalized_audio = pyln.normalize.loudness(data, loudness, -12.0)
+loudness_normalized_audio = jln.normalize.loudness(data, loudness, -12.0)
 ```
 
 ### Advanced operation
@@ -54,48 +54,66 @@ A number of alternate weighting filters are available, as well as the ability to
 Examples are shown below.
 ```python
 import soundfile as sf
-import pyloudnorm as pyln
-from pyloudnorm import IIRfilter
+import jaxloudnorm as jln
+from jaxloudnorm import IIRfilter
 
 data, rate = sf.read("test.wav") # load audio
 
 # block size
-meter1 = pyln.Meter(rate)                               # 400ms block size
-meter2 = pyln.Meter(rate, block_size=0.200)             # 200ms block size
+meter1 = jln.Meter(rate)                               # 400ms block size
+meter2 = jln.Meter(rate, block_size=0.200)             # 200ms block size
 
 # filter classes
-meter3 = pyln.Meter(rate)                               # BS.1770 meter
-meter4 = pyln.Meter(rate, filter_class="DeMan")         # fully compliant filters  
-meter5 = pyln.Meter(rate, filter_class="Fenton/Lee 1")  # low complexity improvement by Fenton and Lee
-meter6 = pyln.Meter(rate, filter_class="Fenton/Lee 2")  # higher complexity improvement by Fenton and Lee
-meter7 = pyln.Meter(rate, filter_class="Dash et al.")   # early modification option
+meter3 = jln.Meter(rate)                               # BS.1770 meter
+meter4 = jln.Meter(rate, filter_class="DeMan")         # fully compliant filters  
+meter5 = jln.Meter(rate, filter_class="Fenton/Lee 1")  # low complexity improvement by Fenton and Lee
+meter6 = jln.Meter(rate, filter_class="Fenton/Lee 2")  # higher complexity improvement by Fenton and Lee
+meter7 = jln.Meter(rate, filter_class="Dash et al.")   # early modification option
 
 # create your own IIR filters
 my_high_pass  = IIRfilter(0.0, 0.5, 20.0, rate, 'high_pass')
 my_high_shelf = IIRfilter(2.0, 0.7, 1525.0, rate, 'high_shelf')
 
 # create a meter initialized without filters
-meter8 = pyln.Meter(rate, filter_class="custom")
+meter8 = jln.Meter(rate, filter_class="custom")
 
 # load your filters into the meter
-meter8._filters = {'my_high_pass' : my_high_pass, 'my_high_shelf' : my_high_shelf}
+meter8._filters = [my_high_pass, my_high_shelf]
 
 ```
 
-## Dependancies
+### Batched operation
+Using `jax` allows us to calculate loudness and normalize across a batch dimension using `vmap` (or `pmap` across devices).
+Examples from tests:
+
+``` python
+def test_batched_integrated_loudness():
+    data, rate = sf.read("tests/data/sine_1000.wav")
+    meter = pyln.Meter(rate)
+    loudness = jax.vmap(meter.integrated_loudness)(jnp.stack([data, data, data]))
+
+    assert jnp.allclose(loudness, jnp.full(loudness.shape, -3.0523438444331137))
+
+def test_batched_loudness_normalize():
+    data, rate = sf.read("tests/data/sine_1000.wav")
+    data = jnp.stack([data, data, data, data])
+    meter = pyln.Meter(rate)
+    loudness = jax.vmap(meter.integrated_loudness)(data)
+    norm = jax.vmap(pyln.normalize.loudness, in_axes=(0, 0, None))(data, loudness, -6.0)
+    loudness = jax.vmap(meter.integrated_loudness)(norm)
+
+    assert jnp.allclose(loudness, jnp.full(loudness.shape, -6.0))
+```
+
+`
+
+## Dependencies
 - **SciPy** ([https://www.scipy.org/](https://www.scipy.org/))
 - **NumPy** ([http://www.numpy.org/](http://www.numpy.org/))
+- **JAX** ([https://jax.readthedocs.io/en/latest/index.html](https://jax.readthedocs.io/en/latest/index.html))
+- **jaxtyping** ([https://docs.kidger.site/jaxtyping/](https://docs.kidger.site/jaxtyping/))
+- **python-soundfile** ([https://github.com/bastibe/python-soundfile](https://github.com/bastibe/python-soundfile))
 
-
-## Citation
-If you use pyloudnorm in your work please consider citing us.
-```
-@inproceedings{steinmetz2021pyloudnorm,
-        title={pyloudnorm: {A} simple yet flexible loudness meter in Python},
-        author={Steinmetz, Christian J. and Reiss, Joshua D.},
-        booktitle={150th AES Convention},
-        year={2021}}
-```
 
 ## References
 

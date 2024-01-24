@@ -1,6 +1,3 @@
-import numpy as np
-
-
 def valid_audio(data, rate, block_size):
     """Validate input audio data.
 

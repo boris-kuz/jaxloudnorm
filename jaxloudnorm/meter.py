@@ -1,14 +1,11 @@
 import jax.numpy as jnp
 import jax
-import numpy as np
 
 from jaxtyping import Float, Array, Scalar
 from typing import Union
 
 from . import util
 from .iirfilter import IIRfilter
-
-from functools import partial
 
 
 def _gated_mean(condition, x):
