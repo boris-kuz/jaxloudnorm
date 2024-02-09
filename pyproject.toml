@@ -1,11 +1,22 @@
 [project]
 name = "jaxloudnorm"
-version = "0.1.1"
-description = "Implementation of ITU-R BS.1770-4 loudness algorithm in Python."
+requires-python = "~=3.9"
+version = "0.1.0"
+description = "Implementation of ITU-R BS.1770-4 loudness algorithm in Jax in Python."
 authors = [
-    { name = "Christian Steinmetz" },
-    { email = "c.j.steinmetz@qmul.ac.uk" },
+    { name = "Boris Kuznetsov" },
+    { email = "boris.kuznetsov@mailbox.org" },
 ]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Scientific/Engineering",
+]
+urls = {repository="https://github.com/boris-kuz/jaxloudnorm"}
+dependencies = ["scipy>=1.0.1", "numpy>=1.14.2", "pysoundfile>=0.9.0", "jax>=0.4.13", "jaxtyping>=0.2.20"]
 
 [build-system]
 # Minimum requirements for the build system to execute.
