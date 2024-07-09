@@ -1,7 +1,7 @@
 `s/np/jnp/g`
 `s/py/jax/g`
 
-Docs below are from the original repo for the most part
+Docs below are from the [original repo](https://github.com/csteinmetz1/pyloudnorm) for the most part.
 
 # jaxloudnorm  [![Build Status](https://travis-ci.org/csteinmetz1/pyloudnorm.svg?branch=master)](https://travis-ci.org/csteinmetz1/pyloudnorm) ![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.3551801.svg)
 Flexible audio loudness meter in Python. 
@@ -80,6 +80,11 @@ meter8 = jln.Meter(rate, filter_class="custom")
 # load your filters into the meter
 meter8._filters = [my_high_pass, my_high_shelf]
 
+# Use FIR approximation for faster speed on GPU.
+# This idea is from AudioTools:
+# https://github.com/descriptinc/audiotools/blob/master/audiotools/core/loudness.py
+# We can set the FIR length with the `zeros` keyword.
+meter9 = jln.Meter(rate, use_fir=True, zeros=2048)
 ```
 
 ### Batched operation
