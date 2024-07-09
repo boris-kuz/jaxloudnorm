@@ -77,23 +77,43 @@ def lfilter(
 
 
 def _lfilter_unbatched(b: Array, a: Array, x: Array, zi: Array) -> tuple[Array, Array]:
-    def f(state: Array, x_: Array) -> tuple[Array, Array]:
-        y = state[0] + b[0] * x_
 
-        def calc_middle_delays(_, a_b_z_: Array) -> tuple[Array, Array]:
-            a_, b_, z_ = a_b_z_
-            z = z_ + x_ * b_ - y * a_
-            return z, z
+    original_length = x.shape[0]
 
-        middle_states = lax.scan(
-            calc_middle_delays,
-            state[1],
-            jnp.stack([a[1:-1], b[1:-1], state[1:]], axis=1),
-        )[1]
+    # Convolve with just the B feedforward coefficients.
+    x = convolve(x, b, mode='full', method='direct')
+    x = x[:original_length]
 
-        last_state = x_ * b[-1] - y * a[-1]
-        return jnp.concatenate([middle_states, last_state.reshape(-1)]), y
+    # flip coefficients to make the recursive `tick_feedback` function easier
+    a = jnp.flip(a)
 
-    zi, out = lax.scan(f, zi, x)
+    def tick_feedback(state: Array, x_: Array) -> tuple[Array, Array]:
+        y = x_ - jnp.dot(state, a[:-1])  # assume a[-1] is 1.
+        state = jnp.concatenate([state[1:], y.reshape(-1)])
+
+        return state, y
+
+    zi, out = lax.scan(tick_feedback, zi, x)
 
     return out, zi
+
+
+def approximate_iir_as_fir(b: Array, a: Array, data: Array, zeros: Array, axis=0):
+    # Compute impulse responses and perform filter as a convolution, avoiding
+    # the sequentiality of lfilter.
+    # Inspired by Descript AudioTools:
+    # https://github.com/descriptinc/audiotools/blob/7776c296c711db90176a63ff808c26e0ee087263/audiotools/core/loudness.py#L52-L100
+
+    impulse = jnp.concatenate([jnp.ones((1,)), jnp.zeros(shape=(zeros - 1,))])
+
+    impulse_response = lfilter(b, a, impulse)
+
+    impulse_response = jnp.expand_dims(impulse_response, axis=(axis + 1) % 2)  # todo: this axis code is ugly
+
+    original_length = data.shape[axis]
+
+    data = jax.scipy.signal.convolve(impulse_response, data, mode='full', method='fft')
+
+    data = jax.lax.dynamic_slice_in_dim(data, 0, original_length, axis=axis)
+
+    return data

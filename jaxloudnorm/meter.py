@@ -36,12 +36,22 @@ class Meter:
         - 'DeMan'
     block_size : float
         Gating block size in seconds.
+    zeros: int
+        Number of zeros to use in FIR approximation of IIR filters,
+        by default 512
+    use_fir: bool
+        Whether to use FIR approximation or exact IIR formulation.
+        If computing on GPU, ``use_fir=True`` is probably faster.
+        By default, ``use_fir`` is False.
     """
 
     def __init__(
-        self, rate: float, filter_class: str = "K-weighting", block_size: float = 0.400
+        self, rate: float, filter_class: str = "K-weighting", block_size: float = 0.400, zeros: int = 512,
+            use_fir: bool = False
     ):
         self.rate = rate
+        self.zeros = zeros
+        self.use_fir = use_fir
         self.filter_class = filter_class
         self.block_size = block_size
 
@@ -85,7 +95,7 @@ class Meter:
         step = 1.0 - overlap  # step size by percentage
 
         signal_len_s = num_samples / self.rate
-        num_gated_blocks = int(
+        num_gated_blocks = (
             round(((signal_len_s - gating_len_s) / (gating_len_s * step))) + 1
         )
 
@@ -150,7 +160,7 @@ class Meter:
     @filter_class.setter
     def filter_class(self, value):
         make_filter = lambda G, Q, fc, filter_type: IIRfilter(
-            G, Q, fc, self.rate, filter_type
+            G, Q, fc, self.rate, filter_type, zeros=self.zeros, use_fir=self.use_fir
         )
         self._filter_class = value
         if self._filter_class == "K-weighting":

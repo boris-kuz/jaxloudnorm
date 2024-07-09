@@ -1,4 +1,4 @@
-from .lfilter import lfilter
+from .lfilter import lfilter, approximate_iir_as_fir
 
 import jax
 import jax.numpy as jnp
@@ -25,15 +25,24 @@ class IIRfilter:
         Sampling rate in Hz.
     filter_type: str
         Shape of the filter.
+    zeros: int
+        Number of zeros to use in FIR approximation of the IIR filter,
+        by default 512
+    use_fir: bool
+        Whether to use FIR approximation or exact IIR formulation.
+        If computing on GPU, ``use_fir=True`` is probably faster.
+        By default, ``use_fir`` is False.
     """
 
-    def __init__(self, G, Q, fc, rate, filter_type, passband_gain=1.0):
+    def __init__(self, G, Q, fc, rate, filter_type, passband_gain=1.0, zeros: int = 512, use_fir: bool = False):
         self.G = G
         self.Q = Q
         self.fc = fc
         self.rate = rate
         self.filter_type = filter_type
         self.passband_gain = passband_gain
+        self.zeros = zeros
+        self.use_fir = use_fir
 
     def __str__(self):
         filter_info = dedent(
@@ -182,9 +191,14 @@ class IIRfilter:
         filtered_signal : ndarray
             Filtered input audio.
         """
-        return self.passband_gain * jax.jit(lfilter, static_argnames="axis")(
-            self.b, self.a, data, axis=axis
-        )
+        if self.use_fir:
+            return self.passband_gain * approximate_iir_as_fir(
+                self.b, self.a, data, self.zeros, axis=axis
+            )
+        else:
+            return self.passband_gain * lfilter(
+                self.b, self.a, data, axis=axis
+            )
 
     @property
     def a(self):

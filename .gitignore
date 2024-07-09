@@ -10,3 +10,4 @@ dist/
 __pycache__
 .vscode
 env/
+.idea
