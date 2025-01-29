@@ -3,7 +3,6 @@ import jax.numpy as jnp
 import jax
 
 
-@jax.jit
 def peak(data, target):
     """Peak normalize a signal.
 
@@ -35,7 +34,6 @@ def peak(data, target):
     return output
 
 
-@jax.jit
 def loudness(data, input_loudness, target_loudness):
     """Loudness normalize a signal.
 
